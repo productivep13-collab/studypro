@@ -7,46 +7,39 @@ from typing import List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
-# Groq client (API key must be in env var)
 from groq import Groq
-
-# SQLAlchemy
 from sqlalchemy import create_engine, Column, String, BigInteger, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
-# ========== Config from environment ==========
 DATABASE_URL = os.getenv("DATABASE_URL")  # set this on Render
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # set this on Render (your Groq key)
 
-# ========== Groq client ==========
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-# ========== SQLAlchemy engine/session (create lazily) ==========
 engine = create_engine(DATABASE_URL, pool_pre_ping=True) if DATABASE_URL else None
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine) if engine else None
 Base = declarative_base()
 
-# ========== Models ==========
+#models
 class Post(Base):
     __tablename__ = "posts"
     id = Column(BigInteger, primary_key=True, index=True)
     title = Column(String(100))
     studyMaterial = Column(Text)
 
-# ========== FastAPI app ==========
+#main app
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # restrict to your Vercel URL in production
+    allow_origins=["*"],  
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ========== Startup event: create tables (safe place) ==========
+
 @app.on_event("startup")
 def on_startup():
     if not engine:
@@ -81,7 +74,7 @@ class PostResponse(BaseModel):
 class FlashRequest(BaseModel):
     value: dict  # {id, title, studyMaterial}
 
-# ========== Health endpoints ==========
+#health endpoints
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -97,7 +90,7 @@ def db_ping():
     except Exception as e:
         return {"db": "error", "detail": str(e)}
 
-# ========== CRUD endpoints (use DB only if configured) ==========
+
 @app.get("/projects", response_model=List[PostResponse])
 def get_projects():
     if not SessionLocal:
@@ -123,7 +116,7 @@ def create_project(project: createProject):
     finally:
         db.close()
 
-# ========== Helper: safe AI call ==========
+#safe ai call
 def run_groq_completion(messages, temperature=0.3, max_tokens=512):
     if not client:
         raise HTTPException(status_code=503, detail="Groq API key not configured")
@@ -135,7 +128,7 @@ def run_groq_completion(messages, temperature=0.3, max_tokens=512):
     )
     return response
 
-# ========== AI endpoints (return helpful fallback on errors) ==========
+
 @app.post("/blurt")
 def blurt_study_material(request: BlurtRequest):
     study_text = request.value.get("studyMaterial", "")
@@ -270,7 +263,6 @@ Return JSON in this exact format:
         ai_json = match.group(0) if match else ai_response
         result = json.loads(ai_json)
 
-        # Basic validation & normalization
         if "sections" not in result:
             raise ValueError("Invalid response structure")
         for section in result["sections"]:
