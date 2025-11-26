@@ -1,4 +1,4 @@
-/* Premium StudyPro UI Design */
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
@@ -73,7 +73,6 @@
   --shadow-glow: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 4px 16px rgba(99, 102, 241, 0.25);
 }
 
-/* Reset & Base Styles */
 * {
   margin: 0;
   padding: 0;
